@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import * as dat from 'dat.gui';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -6,7 +7,8 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
-
+//import asteroidPackUrl from './asteroids/asteroidPack.glb?url';
+//import bgMusicUrl from './audio/young.mp3?url';
 import bgTexture1 from '/images/1.jpg';
 import bgTexture2 from '/images/2.jpg';
 import bgTexture3 from '/images/3.jpg';
@@ -36,13 +38,55 @@ import uraRingTexture from '/images/uranus_ring.png';
 import neptuneTexture from '/images/neptune.jpg';
 import plutoTexture from '/images/plutomap.jpg';
 
+
+
+
+
+
 // ******  SETUP  ******
 console.log("Create the scene");
 const scene = new THREE.Scene();
 
+
 console.log("Create a perspective projection camera");
 var camera = new THREE.PerspectiveCamera( 45, window.innerWidth/window.innerHeight, 0.1, 1000 );
 camera.position.set(-175, 115, 5);
+
+
+// At the top of script.js
+
+
+const listener = new THREE.AudioListener();
+camera.add(listener);
+
+
+const bgSound = new THREE.Audio(listener);
+const audioLoader = new THREE.AudioLoader();
+
+
+// Use the imported file
+/*audioLoader.load(bgMusicUrl, function(buffer) {
+    bgSound.setBuffer(buffer);
+    bgSound.setLoop(true);
+    bgSound.setVolume(0.9);
+    bgSound.play();
+});
+*/
+audioLoader.load('/audio/young.mp3', function(buffer) {
+    bgSound.setBuffer(buffer);
+    bgSound.setLoop(true);
+    bgSound.setVolume(0.9);
+    bgSound.play();
+});
+
+
+// Browsers need user interaction before audio plays
+window.addEventListener('click', () => {
+  if (!bgSound.isPlaying) {
+    bgSound.play();
+  }
+});
+
 
 console.log("Create the renderer");
 const renderer = new THREE.WebGL1Renderer();
@@ -50,19 +94,37 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
+
+
+
 console.log("Create an orbit control");
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.75;
 controls.screenSpacePanning = false;
 
+
 console.log("Set up texture loader");
 const cubeTextureLoader = new THREE.CubeTextureLoader();
 const loadTexture = new THREE.TextureLoader();
 
+
+
+
+
+
+
+
 // ******  POSTPROCESSING setup ******
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
+
+
+
+
+
+
+
 
 // ******  OUTLINE PASS  ******
 const outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
@@ -72,20 +134,40 @@ outlinePass.visibleEdgeColor.set(0xffffff);
 outlinePass.hiddenEdgeColor.set(0x190a05);
 composer.addPass(outlinePass);
 
+
+
+
+
+
+
+
 // ******  BLOOM PASS  ******
 const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1, 0.4, 0.85);
 bloomPass.threshold = 1;
 bloomPass.radius = 0.9;
 composer.addPass(bloomPass);
 
+
+
+
+
+
+
+
 // ****** AMBIENT LIGHT ******
 console.log("Add the ambient light");
-var lightAmbient = new THREE.AmbientLight(0x222222, 6); 
+var lightAmbient = new THREE.AmbientLight(0x222222, 6);
 scene.add(lightAmbient);
+
+
+
+
+
+
+
 
 // ******  Star background  ******
 scene.background = cubeTextureLoader.load([
-
   bgTexture3,
   bgTexture1,
   bgTexture2,
@@ -94,10 +176,58 @@ scene.background = cubeTextureLoader.load([
   bgTexture2
 ]);
 
+
+// ****** STARFIELD BACKGROUND ******
+
+
+// Geometry for stars
+const starGeometry = new THREE.BufferGeometry();
+const starCount = 2000; // number of stars
+
+
+const starPositions = [];
+for (let i = 0; i < starCount; i++) {
+  const x = (Math.random() - 0.5) * 2000;
+  const y = (Math.random() - 0.5) * 2000;
+  const z = (Math.random() - 0.5) * 2000;
+  starPositions.push(x, y, z);
+}
+
+
+starGeometry.setAttribute(
+  'position',
+  new THREE.Float32BufferAttribute(starPositions, 3)
+);
+
+
+const starMaterial = new THREE.PointsMaterial({
+  color: 0xffffff,
+  size: 1.0,
+  sizeAttenuation: true,
+  transparent: true
+});
+
+
+// Create points object
+const stars = new THREE.Points(starGeometry, starMaterial);
+scene.add(stars);
+
+
+
+
+
+
 // ******  CONTROLS  ******
 const gui = new dat.GUI({ autoPlace: false });
 const customContainer = document.getElementById('gui-container');
 customContainer.appendChild(gui.domElement);
+
+
+
+
+
+
+
 
 // ****** SETTINGS FOR INTERACTIVE CONTROLS  ******
 const settings = {
@@ -105,6 +235,13 @@ const settings = {
   acceleration: 1,
   sunIntensity: 1.9
 };
+
+
+
+
+
+
+
 
 gui.add(settings, 'accelerationOrbit', 0, 10).onChange(value => {
 });
@@ -114,9 +251,24 @@ gui.add(settings, 'sunIntensity', 1, 10).onChange(value => {
   sunMat.emissiveIntensity = value;
 });
 
+
+
+
+
+
+
+
 // mouse movement
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+
+
+
+
+// ******  PLANET SPLITTING SYSTEM  ******
+let planetSplitHalves = {}; // Store split hemisphere meshes
+let planetIsSplit = {}; // Track split state
+
 
 function onMouseMove(event) {
     event.preventDefault();
@@ -124,28 +276,70 @@ function onMouseMove(event) {
     mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 }
 
+
+
+
+
+
+
+
 // ******  SELECT PLANET  ******
 let selectedPlanet = null;
 let isMovingTowardsPlanet = false;
 let targetCameraPosition = new THREE.Vector3();
 let offset;
 
+
+
+
+
+
+
+
 function onDocumentMouseDown(event) {
   event.preventDefault();
+
+
+
+
+
+
+
 
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 
+
+
+
+
+
+
+
   raycaster.setFromCamera(mouse, camera);
   var intersects = raycaster.intersectObjects(raycastTargets);
+
+
+
+
+
+
+
 
   if (intersects.length > 0) {
     const clickedObject = intersects[0].object;
     selectedPlanet = identifyPlanet(clickedObject);
     if (selectedPlanet) {
       closeInfoNoZoomOut();
-      
+     
       settings.accelerationOrbit = 0; // Stop orbital movement
+
+
+
+
+
+
+
 
       // Update camera to look at the selected planet
       const planetPosition = new THREE.Vector3();
@@ -153,45 +347,73 @@ function onDocumentMouseDown(event) {
       controls.target.copy(planetPosition);
       camera.lookAt(planetPosition); // Orient the camera towards the planet
 
+
+
+
+
+
+
+
       targetCameraPosition.copy(planetPosition).add(camera.position.clone().sub(planetPosition).normalize().multiplyScalar(offset));
       isMovingTowardsPlanet = true;
     }
   }
 }
 
+
+
+
+
+
+
+
 function identifyPlanet(clickedObject) {
   // Logic to identify which planet was clicked based on the clicked object, different offset for camera distance
         if (clickedObject.material === mercury.planet.material) {
           offset = 10;
           return mercury;
-        } else if (clickedObject.material === venus.Atmosphere.material) {
+        } else if (clickedObject.material === venus.Atmosphere.material || clickedObject.material === venus.planet.material) {
           offset = 25;
           return venus;
-        } else if (clickedObject.material === earth.Atmosphere.material) {
+        } else if (clickedObject.material === earth.Atmosphere.material || clickedObject.material === earth.planet.material) {
           offset = 25;
           return earth;
         } else if (clickedObject.material === mars.planet.material) {
           offset = 15;
           return mars;
-        } else if (clickedObject.material === jupiter.planet.material) {
+        } else if (clickedObject.material === jupiter.Atmosphere.material || clickedObject.material === jupiter.planet.material) {
           offset = 50;
           return jupiter;
-        } else if (clickedObject.material === saturn.planet.material) {
+        } else if (clickedObject.material === saturn.Atmosphere.material || clickedObject.material === saturn.planet.material) {
           offset = 50;
           return saturn;
-        } else if (clickedObject.material === uranus.planet.material) {
+        } else if (clickedObject.material === uranus.Atmosphere.material || clickedObject.material === uranus.planet.material) {
           offset = 25;
           return uranus;
-        } else if (clickedObject.material === neptune.planet.material) {
+        } else if (clickedObject.material === neptune.Atmosphere.material || clickedObject.material === neptune.planet.material) {
           offset = 20;
           return neptune;
         } else if (clickedObject.material === pluto.planet.material) {
           offset = 10;
           return pluto;
-        } 
+        }
+
+
+
+
+
+
+
 
   return null;
 }
+
+
+
+
+
+
+
 
 // ******  SHOW PLANET INFO AFTER SELECTION  ******
 function showPlanetInfo(planet) {
@@ -199,10 +421,470 @@ function showPlanetInfo(planet) {
   var name = document.getElementById('planetName');
   var details = document.getElementById('planetDetails');
 
+
+
+
+
+
+
+
   name.innerText = planet;
   details.innerText = `Radius: ${planetData[planet].radius}\nTilt: ${planetData[planet].tilt}\nRotation: ${planetData[planet].rotation}\nOrbit: ${planetData[planet].orbit}\nDistance: ${planetData[planet].distance}\nMoons: ${planetData[planet].moons}\nInfo: ${planetData[planet].info}`;
 
+
+
+
+
+
+
+
+  // Add split button for planets with layers
+  const existingButton = document.getElementById('splitButton');
+  if (existingButton) {
+    existingButton.remove();
+  }
+
+
+
+
+
+
+
+
+  if (hasLayers(planet)) {
+    const splitButton = document.createElement('button');
+    splitButton.id = 'splitButton';
+    splitButton.innerText = `Split ${planet}`;
+    splitButton.style.cssText = `
+      background: linear-gradient(135deg, #ff6b35, #ff8e53);
+      border: none;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 15px;
+      transition: all 0.3s ease;
+    `;
+    splitButton.onclick = () => splitPlanet(planet);
+    info.appendChild(splitButton);
+  }
+
+
+
+
+
+
+
+
   info.style.display = 'block';
+}
+
+
+
+
+
+
+
+
+// ******  CHECK IF PLANET HAS LAYERS  ******
+function hasLayers(planetName) {
+  // All planets have internal layers now
+  const planetsWithLayers = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+  return planetsWithLayers.includes(planetName);
+}
+
+
+
+
+
+
+
+
+// ******  SPLIT PLANET FUNCTION  ******
+function splitPlanet(planetName) {
+  let planetObj;
+ 
+  switch(planetName) {
+    case 'Mercury':
+      planetObj = mercury;
+      break;
+    case 'Venus':
+      planetObj = venus;
+      break;
+    case 'Earth':
+      planetObj = earth;
+      break;
+    case 'Mars':
+      planetObj = mars;
+      break;
+    case 'Jupiter':
+      planetObj = jupiter;
+      break;
+    case 'Saturn':
+      planetObj = saturn;
+      break;
+    case 'Uranus':
+      planetObj = uranus;
+      break;
+    case 'Neptune':
+      planetObj = neptune;
+      break;
+    case 'Pluto':
+      planetObj = pluto;
+      break;
+    default:
+      return;
+  }
+ 
+  // Toggle layer separation
+  const button = document.getElementById('splitButton');
+  const isSplit = button.innerText.includes('Merge');
+ 
+  if (isSplit) {
+    // Merge layers back
+    mergeLayers(planetObj, planetName);
+    button.innerText = `Split ${planetName}`;
+  } else {
+    // Split layers
+    splitLayers(planetObj, planetName);
+    button.innerText = `Merge ${planetName}`;
+  }
+}
+
+
+
+
+
+
+
+
+// ******  SPLIT LAYERS FUNCTION  ******
+// ******  SPLIT LAYERS FUNCTION  ******
+
+
+
+
+
+
+// ******  MERGE LAYERS FUNCTION  ******
+function mergeLayers(planetObj, planetName) {
+  const planetKey = planetName.toLowerCase();
+ 
+  // Merge planet halves back together
+  if (planetIsSplit[planetKey]) {
+    mergePlanetHalves(planetObj, planetName, planetKey);
+    planetIsSplit[planetKey] = false;
+  }
+
+
+  // Hide internal layers and return to original positions
+  if (planetObj.internalLayers && planetObj.internalLayers.length > 0) {
+    planetObj.internalLayers.forEach((layer, index) => {
+      setTimeout(() => {
+        animateLayerReturn(layer.mesh, 0, 1000 + index * 100);
+        setTimeout(() => {
+          layer.mesh.visible = false;
+          layer.label.visible = false;
+        }, 1000 + index * 100);
+      }, index * 100);
+    });
+  }
+ 
+  // Return atmosphere to original position
+  if (planetObj.Atmosphere) {
+    setTimeout(() => {
+      animateLayerReturn(planetObj.Atmosphere, 0, 1000);
+    }, 200);
+  }
+ 
+  // Return ring to original position
+  if (planetObj.Ring) {
+    setTimeout(() => {
+      animateLayerReturn(planetObj.Ring, 0, 800);
+    }, 300);
+  }
+ 
+  // Return moons to original positions
+  if (planetObj.moons && planetObj.moons.length > 0) {
+    planetObj.moons.forEach((moon, index) => {
+      if (moon.mesh) {
+        setTimeout(() => {
+          animateLayerReturn(moon.mesh, 0, 600);
+        }, 400 + index * 150);
+      }
+    });
+  }
+}
+
+
+
+
+// ******  PLANET HEMISPHERE CREATION  ******
+// ===== replace createPlanetHalves =====
+function createPlanetHalves(planetObj, planetName, planetKey) {
+  const planetSize = planetObj.planet.geometry.parameters.radius;
+
+
+  // Reparent internal layers to planetSystem (keep them centered at planet center)
+  if (planetObj.internalLayers) {
+    planetObj.internalLayers.forEach(layer => {
+      if (layer.mesh.parent !== planetObj.planetSystem) {
+        // remove from planet (if present) and add to system
+        try { planetObj.planet.remove(layer.mesh); } catch(e) {}
+        planetObj.planetSystem.add(layer.mesh);
+        // position relative to planetSystem so they're at the planet center
+        layer.mesh.position.copy(planetObj.planet.position);
+        layer.mesh.rotation.copy(planetObj.planet.rotation);
+      }
+    });
+  }
+
+
+  // hide the original planet mesh (we'll show hemispheres instead)
+  planetObj.planet.visible = false;
+
+
+  // build hemispheres
+  const upperGeometry = new THREE.SphereGeometry(planetSize, 64, 64, 0, Math.PI * 2, 0, Math.PI / 2);
+  const lowerGeometry = new THREE.SphereGeometry(planetSize, 64, 64, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+
+
+  let material;
+  if (planetObj.planet.material && planetObj.planet.material.map) {
+    material = new THREE.MeshPhongMaterial({
+      map: planetObj.planet.material.map,
+      bumpMap: planetObj.planet.material.bumpMap,
+      bumpScale: planetObj.planet.material.bumpScale || 0.7,
+      side: THREE.DoubleSide,
+      shininess: 30
+    });
+  } else {
+    material = planetObj.planet.material.clone();
+    material.side = THREE.DoubleSide;
+  }
+
+
+  const upperHalf = new THREE.Mesh(upperGeometry, material);
+  const lowerHalf = new THREE.Mesh(lowerGeometry, material);
+
+
+  // align halves to the planet position/rotation in the system
+// align halves to the planet position (but keep them straight, no tilt)
+upperHalf.position.copy(planetObj.planet.position);
+lowerHalf.position.copy(planetObj.planet.position);
+upperHalf.rotation.set(0, 0, 0);
+lowerHalf.rotation.set(0, 0, 0);
+
+
+  planetObj.planetSystem.add(upperHalf);
+  planetObj.planetSystem.add(lowerHalf);
+
+
+  planetSplitHalves[planetKey] = {
+    upper: upperHalf,
+    lower: lowerHalf,
+    originalPosition: planetObj.planet.position.clone()
+  };
+
+
+  // compute separation once (same formula we'll use in splitLayers)
+  const baseSeparation = Math.max(planetSize * 0.6, 3);
+  const separationDistance = Math.min(baseSeparation, planetSize * 1.2);
+
+
+  // add extra gap for the upper half so it's not flush with top layer
+  const extraGap = planetSize * 0.9;  // tweak factor (0.05–0.2) to adjust spacing
+
+
+  // only animate the hemispheres here (no internal layer animation)
+  setTimeout(() => {
+    animateLayerSeparation(upperHalf, separationDistance, 1000);
+    animateLayerSeparation(lowerHalf, -separationDistance, 1000);
+  }, 100);
+}
+
+
+// ===== replace splitLayers =====
+function splitLayers(planetObj, planetName) {
+  const planetKey = planetName.toLowerCase();
+
+
+  // ensure hemispheres exist
+  if (!planetIsSplit[planetKey]) {
+    createPlanetHalves(planetObj, planetName, planetKey);
+    planetIsSplit[planetKey] = true;
+  }
+
+
+  const planetSize = planetObj.planet.geometry.parameters.radius;
+  const baseSeparation = Math.max(planetSize * 0.6, 3);
+  const separationDistance = Math.min(baseSeparation, planetSize * 1.2);
+  const gapHeight = separationDistance * 2; // total open space between halves
+
+
+  // Debugging help (comment out when stable)
+  // console.log(`Split ${planetName} — size:${planetSize} sep:${separationDistance} gap:${gapHeight}`);
+
+
+  // Internal layers: distribute them evenly across the gap (symmetrically)
+  if (planetObj.internalLayers && planetObj.internalLayers.length > 0) {
+    const layers = planetObj.internalLayers;
+    const n = layers.length;
+    const step = gapHeight / (n + 1); // positions inside (-gap/2, +gap/2)
+
+
+    layers.forEach((layer, i) => {
+      layer.mesh.visible = true;
+      layer.label.visible = true;
+
+
+      // make sure layer is parented to planetSystem and centered at planet center before animating
+      if (layer.mesh.parent !== planetObj.planetSystem) {
+        try { planetObj.planet.remove(layer.mesh); } catch(e) {}
+        planetObj.planetSystem.add(layer.mesh);
+        layer.mesh.position.copy(planetObj.planet.position);
+      }
+
+
+      // target absolute y inside gap (relative to planet center)
+      const targetAbsoluteY = planetObj.planet.position.y + (-gapHeight / 2) + step * (i + 1);
+      // compute relative offset from current position (animateLayerSeparation expects a relative yOffset)
+      const relativeYOffset = targetAbsoluteY - layer.mesh.position.y;
+
+
+      setTimeout(() => {
+        animateLayerSeparation(layer.mesh, relativeYOffset, 1000 + i * 120);
+      }, i * 120);
+    });
+  }
+
+
+  // Atmosphere: move slightly above the top half (so it visually peeks above)
+  if (planetObj.Atmosphere) {
+    // place it just above the upper hemisphere edge
+    const atmTargetAbsoluteY = planetObj.planet.position.y + separationDistance + planetSize * 0.12;
+    const atmYOffset = atmTargetAbsoluteY - planetObj.Atmosphere.position.y;
+    setTimeout(() => {
+      animateLayerSeparation(planetObj.Atmosphere, atmYOffset, 1000);
+    }, 300);
+  }
+
+
+  // Ring: nudge outward a bit (keep it readable)
+  if (planetObj.Ring) {
+    const ringTargetAbsoluteY = planetObj.planet.position.y + separationDistance * 0.6;
+    const ringYOffset = ringTargetAbsoluteY - planetObj.Ring.position.y;
+    setTimeout(() => {
+      animateLayerSeparation(planetObj.Ring, ringYOffset, 800);
+    }, 400);
+  }
+
+
+  // Moons: lift them a bit so they don't intersect with the opened halves
+  if (planetObj.moons && planetObj.moons.length > 0) {
+    planetObj.moons.forEach((moon, index) => {
+      if (!moon.mesh) return;
+      const moonTargetAbsoluteY = planetObj.planet.position.y + separationDistance + planetSize * 0.4 + index * 1.5;
+      const moonYOffset = moonTargetAbsoluteY - moon.mesh.position.y;
+      setTimeout(() => {
+        animateLayerSeparation(moon.mesh, moonYOffset, 800);
+      }, 500 + index * 150);
+    });
+  }
+}
+
+
+
+
+
+
+function mergePlanetHalves(planetObj, planetName, planetKey) {
+  if (planetSplitHalves[planetKey]) {
+    const halves = planetSplitHalves[planetKey];
+   
+    // Animate halves back together
+    animateLayerReturn(halves.upper, 0, 1000);
+    animateLayerReturn(halves.lower, 0, 1000);
+   
+    // Remove halves and restore original planet after animation
+    setTimeout(() => {
+      planetObj.planetSystem.remove(halves.upper);
+      planetObj.planetSystem.remove(halves.lower);
+     
+      // Move internal layers back to planet
+      if (planetObj.internalLayers) {
+        planetObj.internalLayers.forEach(layer => {
+          planetObj.planetSystem.remove(layer.mesh);
+          planetObj.planet.add(layer.mesh);
+          // Reset position since it's now relative to planet again
+          layer.mesh.position.set(0, 0, 0);
+          layer.mesh.rotation.set(0, 0, 0);
+        });
+      }
+     
+      planetObj.planet.visible = true;
+      delete planetSplitHalves[planetKey];
+    }, 1000);
+  }
+}
+
+
+
+
+
+
+// ******  ANIMATE LAYER SEPARATION  ******
+function animateLayerSeparation(layer, yOffset, duration) {
+  const startY = layer.position.y;
+  const targetY = startY + yOffset;
+  const startTime = Date.now();
+ 
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+   
+    // Smooth easing function
+    const easeOut = 1 - Math.pow(1 - progress, 3);
+   
+    layer.position.y = startY + (targetY - startY) * easeOut;
+   
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+ 
+  animate();
+}
+
+
+
+
+
+
+
+
+// ******  ANIMATE LAYER RETURN  ******
+function animateLayerReturn(layer, targetY, duration) {
+  const startY = layer.position.y;
+  const startTime = Date.now();
+ 
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+   
+    // Smooth easing function
+    const easeOut = 1 - Math.pow(1 - progress, 3);
+   
+    layer.position.y = startY + (targetY - startY) * easeOut;
+   
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+ 
+  animate();
 }
 let isZoomingOut = false;
 let zoomOutTargetPosition = new THREE.Vector3(-175, 115, 5);
@@ -221,8 +903,167 @@ function closeInfoNoZoomOut() {
   info.style.display = 'none';
   settings.accelerationOrbit = 1;
 }
+// ******  LAYER CLICK DETECTION  ******
+function addLayerClickListeners(planetObj, planetName) {
+  if (!planetObj.internalLayers) return;
+ 
+  planetObj.internalLayers.forEach(layer => {
+    layer.mesh.userData.planetName = planetName;
+    layer.mesh.userData.layerName = layer.name;
+    layer.mesh.userData.clickable = true;
+  });
+}
+
+
+function checkLayerClick(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const mouseClick = new THREE.Vector2();
+  mouseClick.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouseClick.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+ 
+  raycaster.setFromCamera(mouseClick, camera);
+ 
+  // Check all planets' internal layers
+  const allLayers = [];
+  [mercury, venus, earth, mars, jupiter, saturn, uranus, neptune, pluto].forEach(planet => {
+    if (planet.internalLayers) {
+      planet.internalLayers.forEach(layer => {
+        if (layer.mesh.visible) {
+          allLayers.push(layer.mesh);
+        }
+      });
+    }
+  });
+ 
+  const intersects = raycaster.intersectObjects(allLayers);
+ 
+  if (intersects.length > 0) {
+    const clickedLayer = intersects[0].object;
+    if (clickedLayer.userData.clickable) {
+      displayLayerDetails(clickedLayer.userData.planetName, clickedLayer.userData.layerName);
+      event.stopPropagation();
+    }
+  }
+}
+
+
+function displayLayerDetails(planetName, layerName) {
+  // Create or update the top tab
+  let layerTab = document.getElementById('layerDetailsTab');
+  if (!layerTab) {
+    layerTab = document.createElement('div');
+    layerTab.id = 'layerDetailsTab';
+    layerTab.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: white;
+      padding: 20px 30px;
+      border-bottom-left-radius: 15px;
+      border-bottom-right-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      font-family: 'Arial', sans-serif;
+      max-width: 600px;
+      z-index: 1000;
+      display: none;
+      border: 2px solid #4a90e2;
+    `;
+    document.body.appendChild(layerTab);
+  }
+ 
+  // Get layer info from your existing configs
+  const layerConfigs = {
+  'Mercury': [
+    { name: 'Inner Core', info: 'Large iron core makes up 75% of Mercury\'s radius. Temperature: 1600-2000°C.' },
+    { name: 'Outer Core', info: 'Thin molten iron layer. Creates Mercury\'s weak magnetic field.' },
+    { name: 'Mantle', info: 'Silicate rock mantle, very thin compared to other terrestrial planets.' }
+  ],
+  'Venus': [
+    { name: 'Inner Core', info: 'Iron-nickel core, possibly liquid. Temperature: 4000-5000°C.' },
+    { name: 'Outer Core', info: 'Large molten metallic core. No magnetic field due to slow rotation.' },
+    { name: 'Mantle', info: 'Hot silicate mantle drives intense volcanic activity.' },
+    { name: 'Crust', info: 'Thick basaltic crust shaped by massive volcanic resurfacing.' }
+  ],
+  'Earth': [
+    { name: 'Inner Core', info: 'Solid iron-nickel sphere. Temperature: 5150-6600°C. Creates Earth\'s magnetic field.' },
+    { name: 'Outer Core', info: 'Liquid iron-nickel alloy. Generates Earth\'s magnetic field through convection.' },
+    { name: 'Lower Mantle', info: 'Dense silicate minerals under extreme pressure. Flows very slowly.' },
+    { name: 'Upper Mantle', info: 'Hot rock that drives tectonic plate movement through convection.' },
+    { name: 'Crust', info: 'Thin rocky shell where we live. Only 1% of Earth\'s volume.' }
+  ],
+  'Mars': [
+    { name: 'Core', info: 'Iron, nickel, and sulfur core, partly liquid. Generates only weak magnetism.' },
+    { name: 'Mantle', info: 'Silicate mantle, thought to be less active than Earth\'s.' },
+    { name: 'Crust', info: 'Thick crust with canyons, volcanoes, and evidence of past water flow.' }
+  ],
+  'Jupiter': [
+    { name: 'Rocky Core', info: 'Dense rock and metal core, about 10–20 Earth masses.' },
+    { name: 'Metallic Hydrogen', info: 'Layer of metallic hydrogen responsible for Jupiter’s strong magnetic field.' },
+    { name: 'Liquid Hydrogen', info: 'Thick layer of liquid hydrogen surrounding the metallic region.' },
+    { name: 'Gaseous Layer', info: 'Visible cloud tops made of ammonia and other compounds.' }
+  ],
+  'Saturn': [
+    { name: 'Rocky Core', info: 'Rock and ice mixture under extreme pressure.' },
+    { name: 'Metallic Hydrogen', info: 'Layer producing Saturn’s weaker magnetic field.' },
+    { name: 'Liquid Hydrogen', info: 'Extensive liquid hydrogen envelope.' },
+    { name: 'Gaseous Layer', info: 'Upper cloud layers composed of ammonia crystals.' }
+  ],
+  'Uranus': [
+    { name: 'Rocky Core', info: 'Small rocky core at the center.' },
+    { name: 'Ice Mantle', info: 'Mixture of water, methane, and ammonia ices.' },
+    { name: 'Water Layer', info: 'Superionic water under high pressure.' },
+    { name: 'Atmosphere', info: 'Hydrogen, helium, and methane atmosphere giving Uranus its blue-green color.' }
+  ],
+  'Neptune': [
+    { name: 'Rocky Core', info: 'Dense rocky and metallic core.' },
+    { name: 'Ice Mantle', info: 'Slushy mixture of water, ammonia, and methane ices.' },
+    { name: 'Water Layer', info: 'Exotic high-pressure water states.' },
+    { name: 'Atmosphere', info: 'Hydrogen, helium, and methane. Strong winds and storms.' }
+  ],
+  'Pluto': [
+    { name: 'Rocky Core', info: 'Believed to be mostly rock and metal.' },
+    { name: 'Ice Layer', info: 'Thick water-ice mantle around the core.' },
+    { name: 'Surface Ice', info: 'Frozen nitrogen, methane, and carbon monoxide covering the surface.' }
+  ]
+};
+
+
+ 
+  const planetLayers = layerConfigs[planetName] || [];
+  const layerInfo = planetLayers.find(layer => layer.name === layerName);
+ 
+  layerTab.innerHTML = `
+    <button style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: white; font-size: 18px; cursor: pointer; opacity: 0.7;" onclick="document.getElementById('layerDetailsTab').style.display='none'">×</button>
+    <h2 style="margin: 0 0 10px 0; color: #4a90e2; font-size: 24px;">${planetName} - ${layerName}</h2>
+    <p style="margin: 0; font-size: 16px; line-height: 1.5;">${layerInfo ? layerInfo.info : 'Layer information not available.'}</p>
+  `;
+ 
+  layerTab.style.display = 'block';
+ 
+  // Auto-hide after 8 seconds
+  setTimeout(() => {
+    if (layerTab && layerTab.style.display === 'block') {
+      layerTab.style.display = 'none';
+    }
+  }, 8000);
+}
+
+
+
+
+
+
 // ******  SUN  ******
 let sunMat;
+
+
+
+
+
+
+
 
 const sunSize = 697/40; // 40 times smaller scale than earth
 const sunGeom = new THREE.SphereGeometry(sunSize, 32, 20);
@@ -234,18 +1075,38 @@ sunMat = new THREE.MeshStandardMaterial({
 const sun = new THREE.Mesh(sunGeom, sunMat);
 scene.add(sun);
 
+
+
+
+
+
+
+
 //point light in the sun
 const pointLight = new THREE.PointLight(0xFDFFD3 , 1200, 400, 1.4);
 scene.add(pointLight);
 
 
+
+
+
+
+
+
 // ******  PLANET CREATION FUNCTION  ******
 function createPlanet(planetName, size, position, tilt, texture, bump, ring, atmosphere, moons){
+
+
+
+
+
+
+
 
   let material;
   if (texture instanceof THREE.Material){
     material = texture;
-  } 
+  }
   else if(bump){
     material = new THREE.MeshPhongMaterial({
     map: loadTexture.load(texture),
@@ -257,18 +1118,41 @@ function createPlanet(planetName, size, position, tilt, texture, bump, ring, atm
     material = new THREE.MeshPhongMaterial({
     map: loadTexture.load(texture)
     });
-  } 
+  }
+
+
+
+
+
+
+
 
   const name = planetName;
   const geometry = new THREE.SphereGeometry(size, 32, 20);
   const planet = new THREE.Mesh(geometry, material);
   const planet3d = new THREE.Object3D;
   const planetSystem = new THREE.Group();
+ 
+  // ******  CREATE INTERNAL LAYERS  ******
+  const internalLayers = createInternalLayers(planetName, size);
+ 
+  // Add internal layers to planet
+  internalLayers.forEach(layer => {
+    planet.add(layer.mesh);
+  });
+ 
   planetSystem.add(planet);
   let Atmosphere;
   let Ring;
   planet.position.x = position;
   planet.rotation.z = tilt * Math.PI / 180;
+
+
+
+
+
+
+
 
   // add orbit path
   const orbitPath = new THREE.EllipseCurve(
@@ -279,12 +1163,26 @@ function createPlanet(planetName, size, position, tilt, texture, bump, ring, atm
     0                 // aRotation
 );
 
+
+
+
+
+
+
+
   const pathPoints = orbitPath.getPoints(100);
   const orbitGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints);
   const orbitMaterial = new THREE.LineBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.03 });
   const orbit = new THREE.LineLoop(orbitGeometry, orbitMaterial);
   orbit.rotation.x = Math.PI / 2;
   planetSystem.add(orbit);
+
+
+
+
+
+
+
 
   //add ring
   if(ring)
@@ -300,7 +1198,7 @@ function createPlanet(planetName, size, position, tilt, texture, bump, ring, atm
     Ring.rotation.x = -0.5 *Math.PI;
     Ring.rotation.y = -tilt * Math.PI / 180;
   }
-  
+ 
   //add atmosphere
   if(atmosphere){
     const atmosphereGeom = new THREE.SphereGeometry(size+0.1, 32, 20);
@@ -312,16 +1210,23 @@ function createPlanet(planetName, size, position, tilt, texture, bump, ring, atm
       depthWrite: false
     })
     Atmosphere = new THREE.Mesh(atmosphereGeom, atmosphereMaterial)
-    
+   
     Atmosphere.rotation.z = 0.41;
     planet.add(Atmosphere);
   }
+
+
+
+
+
+
+
 
   //add moons
   if(moons){
     moons.forEach(moon => {
       let moonMaterial;
-      
+     
       if(moon.bump){
         moonMaterial = new THREE.MeshStandardMaterial({
           map: loadTexture.load(moon.texture),
@@ -344,13 +1249,155 @@ function createPlanet(planetName, size, position, tilt, texture, bump, ring, atm
   //add planet system to planet3d object and to the scene
   planet3d.add(planetSystem);
   scene.add(planet3d);
-  return {name, planet, planet3d, Atmosphere, moons, planetSystem, Ring};
+  return {name, planet, planet3d, Atmosphere, moons, planetSystem, Ring, internalLayers};
 }
+
+
+
+
+
+
+
+
+// ******  CREATE INTERNAL LAYERS FUNCTION  ******
+function createInternalLayers(planetName, planetSize) {
+  const layers = [];
+ 
+  // Define layer configurations for different planet types
+  const layerConfigs = {
+    'Mercury': [
+      { name: 'Inner Core', size: planetSize * 0.75, color: '#FF4444', opacity: 0.8 },
+      { name: 'Outer Core', size: planetSize * 0.85, color: '#FF6666', opacity: 0.6 },
+      { name: 'Mantle', size: planetSize * 0.95, color: '#CC4444', opacity: 0.4 }
+    ],
+    'Venus': [
+      { name: 'Inner Core', size: planetSize * 0.3, color: '#FF2200', opacity: 0.9 },
+      { name: 'Outer Core', size: planetSize * 0.55, color: '#FF4400', opacity: 0.7 },
+      { name: 'Mantle', size: planetSize * 0.85, color: '#AA3300', opacity: 0.5 },
+      { name: 'Crust', size: planetSize * 0.98, color: '#DD5500', opacity: 0.3 }
+    ],
+    'Earth': [
+      { name: 'Inner Core', size: planetSize * 0.2, color: '#FFFF00', opacity: 0.9 },
+      { name: 'Outer Core', size: planetSize * 0.35, color: '#FF8800', opacity: 0.8 },
+      { name: 'Lower Mantle', size: planetSize * 0.55, color: '#FF4400', opacity: 0.6 },
+      { name: 'Upper Mantle', size: planetSize * 0.85, color: '#CC3300', opacity: 0.4 },
+      { name: 'Crust', size: planetSize * 0.98, color: '#8B4513', opacity: 0.2 }
+    ],
+    'Mars': [
+      { name: 'Core', size: planetSize * 0.5, color: '#FF3300', opacity: 0.8 },
+      { name: 'Mantle', size: planetSize * 0.85, color: '#AA2200', opacity: 0.5 },
+      { name: 'Crust', size: planetSize * 0.98, color: '#CC5500', opacity: 0.3 }
+    ],
+    'Jupiter': [
+      { name: 'Rocky Core', size: planetSize * 0.15, color: '#8B4513', opacity: 0.9 },
+      { name: 'Metallic Hydrogen', size: planetSize * 0.45, color: '#555555', opacity: 0.7 },
+      { name: 'Liquid Hydrogen', size: planetSize * 0.75, color: '#4444FF', opacity: 0.5 },
+      { name: 'Gaseous Layer', size: planetSize * 0.95, color: '#D2B48C', opacity: 0.3 }
+    ],
+    'Saturn': [
+      { name: 'Rocky Core', size: planetSize * 0.2, color: '#8B4513', opacity: 0.9 },
+      { name: 'Metallic Hydrogen', size: planetSize * 0.5, color: '#444444', opacity: 0.7 },
+      { name: 'Liquid Hydrogen', size: planetSize * 0.8, color: '#6666FF', opacity: 0.5 },
+      { name: 'Gaseous Layer', size: planetSize * 0.96, color: '#F4A460', opacity: 0.3 }
+    ],
+    'Uranus': [
+      { name: 'Rocky Core', size: planetSize * 0.2, color: '#654321', opacity: 0.9 },
+      { name: 'Ice Mantle', size: planetSize * 0.6, color: '#87CEEB', opacity: 0.7 },
+      { name: 'Water Layer', size: planetSize * 0.85, color: '#4682B4', opacity: 0.5 },
+      { name: 'Atmosphere', size: planetSize * 0.98, color: '#40E0D0', opacity: 0.3 }
+    ],
+    'Neptune': [
+      { name: 'Rocky Core', size: planetSize * 0.25, color: '#2F4F4F', opacity: 0.9 },
+      { name: 'Ice Mantle', size: planetSize * 0.65, color: '#4169E1', opacity: 0.7 },
+      { name: 'Water Layer', size: planetSize * 0.88, color: '#1E90FF', opacity: 0.5 },
+      { name: 'Atmosphere', size: planetSize * 0.98, color: '#0000CD', opacity: 0.3 }
+    ],
+    'Pluto': [
+      { name: 'Rocky Core', size: planetSize * 0.6, color: '#696969', opacity: 0.8 },
+      { name: 'Ice Layer', size: planetSize * 0.9, color: '#B0C4DE', opacity: 0.5 },
+      { name: 'Surface Ice', size: planetSize * 0.98, color: '#F0F8FF', opacity: 0.3 }
+    ]
+  };
+ 
+  const config = layerConfigs[planetName] || [];
+ 
+  config.forEach((layerConfig, index) => {
+    const layerGeometry = new THREE.SphereGeometry(layerConfig.size, 24, 16);
+    const layerMaterial = new THREE.MeshBasicMaterial({
+      color: layerConfig.color,
+      transparent: true,
+      opacity: layerConfig.opacity,
+      side: THREE.BackSide
+    });
+   
+    const layerMesh = new THREE.Mesh(layerGeometry, layerMaterial);
+    layerMesh.visible = false; // Hidden by default
+   
+    // Create text label for the layer
+    const label = createLayerLabel(layerConfig.name, layerConfig.color);
+    label.position.set(layerConfig.size + 2, 0, 0);
+    label.visible = false;
+    layerMesh.add(label);
+   
+    layers.push({
+      name: layerConfig.name,
+      mesh: layerMesh,
+      label: label,
+      originalSize: layerConfig.size,
+      color: layerConfig.color
+    });
+  });
+ 
+  return layers;
+}
+
+
+
+
+
+
+
+
+// ******  CREATE LAYER LABEL FUNCTION  ******
+function createLayerLabel(text, color) {
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  canvas.width = 256;
+  canvas.height = 64;
+ 
+  context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+ 
+  context.font = 'Bold 16px Arial';
+  context.fillStyle = color;
+  context.textAlign = 'center';
+  context.fillText(text, canvas.width / 2, canvas.height / 2 + 6);
+ 
+  const texture = new THREE.CanvasTexture(canvas);
+  const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+  const sprite = new THREE.Sprite(spriteMaterial);
+  sprite.scale.set(8, 2, 1);
+ 
+  return sprite;
+}
+
+
+
+
+
+
 
 
 // ******  LOADING OBJECTS METHOD  ******
 function loadObject(path, position, scale, callback) {
   const loader = new GLTFLoader();
+
+
+
+
+
+
+
 
   loader.load(path, function (gltf) {
       const obj = gltf.scene;
@@ -365,6 +1412,13 @@ function loadObject(path, position, scale, callback) {
   });
 }
 
+
+
+
+
+
+
+
 // ******  ASTEROIDS  ******
 const asteroids = [];
 function loadAsteroids(path, numberOfAsteroids, minOrbitRadius, maxOrbitRadius) {
@@ -372,16 +1426,29 @@ function loadAsteroids(path, numberOfAsteroids, minOrbitRadius, maxOrbitRadius) 
   loader.load(path, function (gltf) {
       gltf.scene.traverse(function (child) {
           if (child.isMesh) {
-              for (let i = 0; i < numberOfAsteroids / 12; i++) { // Divide by 12 because there are 12 asteroids in the pack
+              for (let i = 0; i < numberOfAsteroids / 12; i++) { // 12 asteroids per pack
                   const asteroid = child.clone();
+                 
+                  // Random orbit placement
                   const orbitRadius = THREE.MathUtils.randFloat(minOrbitRadius, maxOrbitRadius);
                   const angle = Math.random() * Math.PI * 2;
                   const x = orbitRadius * Math.cos(angle);
-                  const y = 0;
                   const z = orbitRadius * Math.sin(angle);
-                  child.receiveShadow = true;
+                  const y = THREE.MathUtils.randFloatSpread(10); // spread vertically a little
+
+
                   asteroid.position.set(x, y, z);
-                  asteroid.scale.setScalar(THREE.MathUtils.randFloat(0.8, 1.2));
+
+
+                  // Random size
+                  asteroid.scale.setScalar(THREE.MathUtils.randFloat(0.5, 2.0));
+
+
+                  // Add small random rotation
+                  asteroid.rotation.x = Math.random() * Math.PI;
+                  asteroid.rotation.y = Math.random() * Math.PI;
+
+
                   scene.add(asteroid);
                   asteroids.push(asteroid);
               }
@@ -391,6 +1458,19 @@ function loadAsteroids(path, numberOfAsteroids, minOrbitRadius, maxOrbitRadius) 
       console.error('An error happened', error);
   });
 }
+
+
+// Main asteroid belt (between Mars & Jupiter)
+// Main asteroid belt (between Mars & Jupiter)
+//loadAsteroids(asteroidPackUrl, 3000, 130, 160);
+
+
+// Kuiper belt (beyond Neptune)
+//loadAsteroids(asteroidPackUrl, 6000, 352, 370);
+
+
+loadAsteroids('/asteroids/asteroidPack.glb', 3000, 130, 160);
+loadAsteroids('/asteroids/asteroidPack.glb', 6000, 352, 370);
 
 
 // Earth day/night effect shader material
@@ -405,7 +1485,21 @@ const earthMaterial = new THREE.ShaderMaterial({
     varying vec2 vUv;
     varying vec3 vSunDirection;
 
+
+
+
+
+
+
+
     uniform vec3 sunPosition;
+
+
+
+
+
+
+
 
     void main() {
       vUv = uv;
@@ -419,9 +1513,23 @@ const earthMaterial = new THREE.ShaderMaterial({
     uniform sampler2D dayTexture;
     uniform sampler2D nightTexture;
 
+
+
+
+
+
+
+
     varying vec3 vNormal;
     varying vec2 vUv;
     varying vec3 vSunDirection;
+
+
+
+
+
+
+
 
     void main() {
       float intensity = max(dot(vNormal, vSunDirection), 0.0);
@@ -433,6 +1541,12 @@ const earthMaterial = new THREE.ShaderMaterial({
 });
 
 
+
+
+
+
+
+
 // ******  MOONS  ******
 // Earth
 const earthMoon = [{
@@ -442,6 +1556,13 @@ const earthMoon = [{
   orbitSpeed: 0.001 * settings.accelerationOrbit,
   orbitRadius: 10
 }]
+
+
+
+
+
+
+
 
 // Mars' moons with path to 3D models (phobos & deimos)
 const marsMoons = [
@@ -462,6 +1583,13 @@ const marsMoons = [
     mesh: null
   }
 ];
+
+
+
+
+
+
+
 
 // Jupiter
 const jupiterMoons = [
@@ -491,11 +1619,129 @@ const jupiterMoons = [
   }
 ];
 
+
+
+
+
+
+
+
+// ******  TEXT LABEL CREATION FUNCTION  ******
+function createTextLabel(text, color = '#ffffff') {
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  canvas.width = 512;
+  canvas.height = 128;
+ 
+  context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+ 
+  context.font = 'Bold 36px Arial';
+  context.fillStyle = color;
+  context.textAlign = 'center';
+  context.strokeStyle = '#000000';
+  context.lineWidth = 2;
+  context.strokeText(text, canvas.width / 2, canvas.height / 2 + 12);
+  context.fillText(text, canvas.width / 2, canvas.height / 2 + 12);
+ 
+  const texture = new THREE.CanvasTexture(canvas);
+  const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+  const sprite = new THREE.Sprite(spriteMaterial);
+  sprite.scale.set(20, 5, 1);
+ 
+  return sprite;
+}
+
+
+
+
+
+
+
+
 // ******  PLANET CREATIONS  ******
 const mercury = new createPlanet('Mercury', 2.4, 40, 0, mercuryTexture, mercuryBump);
 const venus = new createPlanet('Venus', 6.1, 65, 3, venusTexture, venusBump, null, venusAtmosphere);
 const earth = new createPlanet('Earth', 6.4, 90, 23, earthMaterial, null, null, earthAtmosphere, earthMoon);
 const mars = new createPlanet('Mars', 3.4, 115, 25, marsTexture, marsBump)
+
+
+
+
+
+
+
+
+// ******  ADD PLANET LABELS  ******
+// Sun label
+const sunLabel = createTextLabel('Sun', '#ffff00');
+sunLabel.position.set(0, sunSize + 5, 0);
+scene.add(sunLabel);
+
+
+
+
+
+
+
+
+// Planet labels
+const mercuryLabel = createTextLabel('Mercury', '#8c7853');
+mercuryLabel.position.set(40, 7, 0);
+mercury.planetSystem.add(mercuryLabel);
+
+
+
+
+
+
+
+
+const venusLabel = createTextLabel('Venus', '#ffc649');
+venusLabel.position.set(65, 12, 0);
+venus.planetSystem.add(venusLabel);
+
+
+
+
+
+
+
+
+const earthLabel = createTextLabel('Earth', '#6b93d6');
+earthLabel.position.set(90, 12, 0);
+earth.planetSystem.add(earthLabel);
+
+
+
+
+
+
+
+
+// Earth Moon label
+const moonLabel = createTextLabel('Moon', '#cccccc');
+moonLabel.position.set(90 + 10, 8, 0);
+earth.planetSystem.add(moonLabel);
+
+
+
+
+
+
+
+
+const marsLabel = createTextLabel('Mars', '#cd5c5c');
+marsLabel.position.set(115, 9, 0);
+mars.planetSystem.add(marsLabel);
+
+
+
+
+
+
+
+
 // Load Mars moons
 marsMoons.forEach(moon => {
   loadObject(moon.modelPath, moon.position, moon.scale, function(loadedModel) {
@@ -510,22 +1756,91 @@ marsMoons.forEach(moon => {
   });
 });
 
-const jupiter = new createPlanet('Jupiter', 69/4, 200, 3, jupiterTexture, null, null, null, jupiterMoons);
-const saturn = new createPlanet('Saturn', 58/4, 270, 26, saturnTexture, null, {
-  innerRadius: 18, 
-  outerRadius: 29, 
-  texture: satRingTexture
-});
-const uranus = new createPlanet('Uranus', 25/4, 320, 82, uranusTexture, null, {
-  innerRadius: 6, 
-  outerRadius: 8, 
-  texture: uraRingTexture
-});
-const neptune = new createPlanet('Neptune', 24/4, 340, 28, neptuneTexture);
-const pluto = new createPlanet('Pluto', 1, 350, 57, plutoTexture)
 
-  // ******  PLANETS DATA  ******
-  const planetData = {
+
+
+
+
+
+
+// Create atmosphere textures for gas giants
+const jupiterAtmosphere = jupiterTexture; // Jupiter has thick atmosphere
+const saturnAtmosphere = saturnTexture;   // Saturn has thick atmosphere  
+const uranusAtmosphere = uranusTexture;   // Uranus has thick atmosphere
+const neptuneAtmosphere = neptuneTexture; // Neptune has thick atmosphere
+
+
+
+
+
+
+
+
+const jupiter = new createPlanet('Jupiter', 69/4, 200, 3, jupiterTexture, null, null, jupiterAtmosphere, jupiterMoons);
+const saturn = new createPlanet('Saturn', 58/4, 270, 26, saturnTexture, null, {
+  innerRadius: 18,
+  outerRadius: 29,
+  texture: satRingTexture
+}, saturnAtmosphere);
+const uranus = new createPlanet('Uranus', 25/4, 320, 82, uranusTexture, null, {
+  innerRadius: 6,
+  outerRadius: 8,
+  texture: uraRingTexture
+}, uranusAtmosphere);
+const neptune = new createPlanet('Neptune', 24/4, 340, 28, neptuneTexture, null, null, neptuneAtmosphere);
+const pluto = new createPlanet('Pluto', 1, 350, 57, plutoTexture);
+
+
+// ******  ADD REMAINING PLANET LABELS  ******
+const jupiterLabel = createTextLabel('Jupiter', '#d8ca9d');
+jupiterLabel.position.set(200, 25, 0);
+jupiter.planetSystem.add(jupiterLabel);
+
+
+
+
+const saturnLabel = createTextLabel('Saturn', '#fad5a5');
+saturnLabel.position.set(270, 20, 0);
+saturn.planetSystem.add(saturnLabel);
+
+
+
+
+const uranusLabel = createTextLabel('Uranus', '#4fd0e3');
+uranusLabel.position.set(320, 15, 0);
+uranus.planetSystem.add(uranusLabel);
+
+
+
+
+const neptuneLabel = createTextLabel('Neptune', '#4169e1');
+neptuneLabel.position.set(340, 15, 0);
+neptune.planetSystem.add(neptuneLabel);
+
+
+
+
+const plutoLabel = createTextLabel('Pluto', '#8c7853');
+plutoLabel.position.set(350, 8, 0);
+pluto.planetSystem.add(plutoLabel);
+
+
+
+
+// Add click listeners for all planets
+addLayerClickListeners(mercury, 'Mercury');
+addLayerClickListeners(venus, 'Venus');
+addLayerClickListeners(earth, 'Earth');
+addLayerClickListeners(mars, 'Mars');
+addLayerClickListeners(jupiter, 'Jupiter');
+addLayerClickListeners(saturn, 'Saturn');
+addLayerClickListeners(uranus, 'Uranus');
+addLayerClickListeners(neptune, 'Neptune');
+addLayerClickListeners(pluto, 'Pluto');
+
+
+// ******  PLANETS DATA  ******
+const planetData = {
     'Mercury': {
         radius: '2,439.7 km',
         tilt: '0.034°',
@@ -612,13 +1927,26 @@ const pluto = new createPlanet('Pluto', 1, 350, 57, plutoTexture)
 
 // Array of planets and atmospheres for raycasting
 const raycastTargets = [
-  mercury.planet, venus.planet, venus.Atmosphere, earth.planet, earth.Atmosphere, 
-  mars.planet, jupiter.planet, saturn.planet, uranus.planet, neptune.planet, pluto.planet
+  mercury.planet,
+  venus.planet, venus.Atmosphere,
+  earth.planet, earth.Atmosphere,
+  mars.planet,
+  jupiter.planet, jupiter.Atmosphere,
+  saturn.planet, saturn.Atmosphere,
+  uranus.planet, uranus.Atmosphere,
+  neptune.planet, neptune.Atmosphere,
+  pluto.planet
 ];
+
+
+
 
 // ******  SHADOWS  ******
 renderer.shadowMap.enabled = true;
 pointLight.castShadow = true;
+
+
+
 
 //properties for the point light
 pointLight.shadow.mapSize.width = 1024;
@@ -626,167 +1954,215 @@ pointLight.shadow.mapSize.height = 1024;
 pointLight.shadow.camera.near = 10;
 pointLight.shadow.camera.far = 20;
 
-//casting and receiving shadows
+
+
+
+//casting and receiving shadows for all planets
+mercury.planet.castShadow = true;
+mercury.planet.receiveShadow = true;
+
+
+
+
+venus.planet.castShadow = true;
+venus.planet.receiveShadow = true;
+venus.Atmosphere.castShadow = true;
+venus.Atmosphere.receiveShadow = true;
+
+
+
+
 earth.planet.castShadow = true;
 earth.planet.receiveShadow = true;
 earth.Atmosphere.castShadow = true;
 earth.Atmosphere.receiveShadow = true;
 earth.moons.forEach(moon => {
-moon.mesh.castShadow = true;
-moon.mesh.receiveShadow = true;
+  moon.mesh.castShadow = true;
+  moon.mesh.receiveShadow = true;
 });
-mercury.planet.castShadow = true;
-mercury.planet.receiveShadow = true;
-venus.planet.castShadow = true;
-venus.planet.receiveShadow = true;
-venus.Atmosphere.receiveShadow = true;
+
+
 mars.planet.castShadow = true;
 mars.planet.receiveShadow = true;
+
+
 jupiter.planet.castShadow = true;
 jupiter.planet.receiveShadow = true;
+if(jupiter.Atmosphere) {
+  jupiter.Atmosphere.castShadow = true;
+  jupiter.Atmosphere.receiveShadow = true;
+}
 jupiter.moons.forEach(moon => {
   moon.mesh.castShadow = true;
   moon.mesh.receiveShadow = true;
-  });
+});
+
+
 saturn.planet.castShadow = true;
 saturn.planet.receiveShadow = true;
-saturn.Ring.receiveShadow = true;
+if(saturn.Atmosphere) {
+  saturn.Atmosphere.castShadow = true;
+  saturn.Atmosphere.receiveShadow = true;
+}
+if(saturn.Ring) {
+  saturn.Ring.castShadow = true;
+  saturn.Ring.receiveShadow = true;
+}
+
+
+uranus.planet.castShadow = true;
 uranus.planet.receiveShadow = true;
+if(uranus.Atmosphere) {
+  uranus.Atmosphere.castShadow = true;
+  uranus.Atmosphere.receiveShadow = true;
+}
+if(uranus.Ring) {
+  uranus.Ring.castShadow = true;
+  uranus.Ring.receiveShadow = true;
+}
+
+
+neptune.planet.castShadow = true;
 neptune.planet.receiveShadow = true;
+if(neptune.Atmosphere) {
+  neptune.Atmosphere.castShadow = true;
+  neptune.Atmosphere.receiveShadow = true;
+}
+
+
+pluto.planet.castShadow = true;
 pluto.planet.receiveShadow = true;
 
 
+// ******  ORBITAL ANIMATION VARIABLES  ******
+let time = 0;
+const orbitSpeeds = {
+  mercury: 0.004,
+  venus: 0.003,
+  earth: 0.002,
+  mars: 0.001,
+  jupiter: 0.0008,
+  saturn: 0.0006,
+  uranus: 0.0004,
+  neptune: 0.0003,
+  pluto: 0.0002
+};
 
 
-function animate(){
-
-  //rotating planets around the sun and itself
-  sun.rotateY(0.001 * settings.acceleration);
-  mercury.planet.rotateY(0.001 * settings.acceleration);
-  mercury.planet3d.rotateY(0.004 * settings.accelerationOrbit);
-  venus.planet.rotateY(0.0005 * settings.acceleration)
-  venus.Atmosphere.rotateY(0.0005 * settings.acceleration);
-  venus.planet3d.rotateY(0.0006 * settings.accelerationOrbit);
-  earth.planet.rotateY(0.005 * settings.acceleration);
-  earth.Atmosphere.rotateY(0.001 * settings.acceleration);
-  earth.planet3d.rotateY(0.001 * settings.accelerationOrbit);
-  mars.planet.rotateY(0.01 * settings.acceleration);
-  mars.planet3d.rotateY(0.0007 * settings.accelerationOrbit);
-  jupiter.planet.rotateY(0.005 * settings.acceleration);
-  jupiter.planet3d.rotateY(0.0003 * settings.accelerationOrbit);
-  saturn.planet.rotateY(0.01 * settings.acceleration);
-  saturn.planet3d.rotateY(0.0002 * settings.accelerationOrbit);
-  uranus.planet.rotateY(0.005 * settings.acceleration);
-  uranus.planet3d.rotateY(0.0001 * settings.accelerationOrbit);
-  neptune.planet.rotateY(0.005 * settings.acceleration);
-  neptune.planet3d.rotateY(0.00008 * settings.accelerationOrbit);
-  pluto.planet.rotateY(0.001 * settings.acceleration)
-  pluto.planet3d.rotateY(0.00006 * settings.accelerationOrbit)
-
-// Animate Earth's moon
-if (earth.moons) {
-  earth.moons.forEach(moon => {
-    const time = performance.now();
-    const tiltAngle = 5 * Math.PI / 180;
-
-    const moonX = earth.planet.position.x + moon.orbitRadius * Math.cos(time * moon.orbitSpeed);
-    const moonY = moon.orbitRadius * Math.sin(time * moon.orbitSpeed) * Math.sin(tiltAngle);
-    const moonZ = earth.planet.position.z + moon.orbitRadius * Math.sin(time * moon.orbitSpeed) * Math.cos(tiltAngle);
-
-    moon.mesh.position.set(moonX, moonY, moonZ);
-    moon.mesh.rotateY(0.01);
-  });
-}
-// Animate Mars' moons
-if (marsMoons){
-marsMoons.forEach(moon => {
-  if (moon.mesh) {
-    const time = performance.now();
-
-    const moonX = mars.planet.position.x + moon.orbitRadius * Math.cos(time * moon.orbitSpeed);
-    const moonY = moon.orbitRadius * Math.sin(time * moon.orbitSpeed);
-    const moonZ = mars.planet.position.z + moon.orbitRadius * Math.sin(time * moon.orbitSpeed);
-
-    moon.mesh.position.set(moonX, moonY, moonZ);
-    moon.mesh.rotateY(0.001);
+// ******  ANIMATION LOOP  ******
+function animate() {
+  requestAnimationFrame(animate);
+ 
+  time += 0.01;
+ 
+  // Update controls
+  controls.update();
+ 
+  // Planet rotations
+  if (settings.acceleration > 0) {
+    sun.rotation.y += 0.001 * settings.acceleration;
+    mercury.planet.rotation.y += 0.01 * settings.acceleration;
+    venus.planet.rotation.y += 0.005 * settings.acceleration;
+    earth.planet.rotation.y += 0.02 * settings.acceleration;
+    mars.planet.rotation.y += 0.018 * settings.acceleration;
+    jupiter.planet.rotation.y += 0.04 * settings.acceleration;
+    saturn.planet.rotation.y += 0.038 * settings.acceleration;
+    uranus.planet.rotation.y += 0.03 * settings.acceleration;
+    neptune.planet.rotation.y += 0.032 * settings.acceleration;
+    pluto.planet.rotation.y += 0.008 * settings.acceleration;
   }
-});
-}
-
-// Animate Jupiter's moons
-if (jupiter.moons) {
-  jupiter.moons.forEach(moon => {
-    const time = performance.now();
-    const moonX = jupiter.planet.position.x + moon.orbitRadius * Math.cos(time * moon.orbitSpeed);
-    const moonY = moon.orbitRadius * Math.sin(time * moon.orbitSpeed);
-    const moonZ = jupiter.planet.position.z + moon.orbitRadius * Math.sin(time * moon.orbitSpeed);
-
-    moon.mesh.position.set(moonX, moonY, moonZ);
-    moon.mesh.rotateY(0.01);
-  });
-}
-
-// Rotate asteroids
-asteroids.forEach(asteroid => {
-  asteroid.rotation.y += 0.0001;
-  asteroid.position.x = asteroid.position.x * Math.cos(0.0001 * settings.accelerationOrbit) + asteroid.position.z * Math.sin(0.0001 * settings.accelerationOrbit);
-  asteroid.position.z = asteroid.position.z * Math.cos(0.0001 * settings.accelerationOrbit) - asteroid.position.x * Math.sin(0.0001 * settings.accelerationOrbit);
-});
-
-// ****** OUTLINES ON PLANETS ******
-raycaster.setFromCamera(mouse, camera);
-
-// Check for intersections
-var intersects = raycaster.intersectObjects(raycastTargets);
-
-// Reset all outlines
-outlinePass.selectedObjects = [];
-
-if (intersects.length > 0) {
-  const intersectedObject = intersects[0].object;
-
-  // If the intersected object is an atmosphere, find the corresponding planet
-  if (intersectedObject === earth.Atmosphere) {
-    outlinePass.selectedObjects = [earth.planet];
-  } else if (intersectedObject === venus.Atmosphere) {
-    outlinePass.selectedObjects = [venus.planet];
-  } else {
-    // For other planets, outline the intersected object itself
-    outlinePass.selectedObjects = [intersectedObject];
+ 
+  // Planet orbital motion
+  if (settings.accelerationOrbit > 0) {
+    mercury.planet3d.rotation.y += orbitSpeeds.mercury * settings.accelerationOrbit;
+    venus.planet3d.rotation.y += orbitSpeeds.venus * settings.accelerationOrbit;
+    earth.planet3d.rotation.y += orbitSpeeds.earth * settings.accelerationOrbit;
+    mars.planet3d.rotation.y += orbitSpeeds.mars * settings.accelerationOrbit;
+    jupiter.planet3d.rotation.y += orbitSpeeds.jupiter * settings.accelerationOrbit;
+    saturn.planet3d.rotation.y += orbitSpeeds.saturn * settings.accelerationOrbit;
+    uranus.planet3d.rotation.y += orbitSpeeds.uranus * settings.accelerationOrbit;
+    neptune.planet3d.rotation.y += orbitSpeeds.neptune * settings.accelerationOrbit;
+    pluto.planet3d.rotation.y += orbitSpeeds.pluto * settings.accelerationOrbit;
   }
-}
-// ******  ZOOM IN/OUT  ******
-if (isMovingTowardsPlanet) {
-  // Smoothly move the camera towards the target position
-  camera.position.lerp(targetCameraPosition, 0.03);
-
-  // Check if the camera is close to the target position
-  if (camera.position.distanceTo(targetCameraPosition) < 1) {
+ 
+  // Moon orbital motion
+  if (earth.moons) {
+    earth.moons.forEach((moon, index) => {
+      const angle = time * (moon.orbitSpeed || 0.01) + index * Math.PI / 2;
+      const radius = moon.orbitRadius || 10;
+      moon.mesh.position.x = earth.planet.position.x + Math.cos(angle) * radius;
+      moon.mesh.position.z = Math.sin(angle) * radius;
+    });
+  }
+ 
+  if (jupiter.moons) {
+    jupiter.moons.forEach((moon, index) => {
+      const angle = time * (moon.orbitSpeed || 0.005) + index * Math.PI / 4;
+      const radius = moon.orbitRadius || 20;
+      moon.mesh.position.x = jupiter.planet.position.x + Math.cos(angle) * radius;
+      moon.mesh.position.z = Math.sin(angle) * radius;
+    });
+  }
+ 
+  // Mars moons orbital motion
+  marsMoons.forEach((moon, index) => {
+    if (moon.mesh) {
+      const angle = time * (moon.orbitSpeed || 0.01) + index * Math.PI;
+      moon.mesh.position.x = mars.planet.position.x + Math.cos(angle) * moon.orbitRadius;
+      moon.mesh.position.z = Math.sin(angle) * moon.orbitRadius;
+    }
+  });
+ 
+  // Camera movement towards selected planet
+  if (isMovingTowardsPlanet && selectedPlanet) {
+    camera.position.lerp(targetCameraPosition, 0.02);
+   
+    if (camera.position.distanceTo(targetCameraPosition) < 1) {
       isMovingTowardsPlanet = false;
       showPlanetInfo(selectedPlanet.name);
-
+    }
   }
-} else if (isZoomingOut) {
-  camera.position.lerp(zoomOutTargetPosition, 0.05);
-
-  if (camera.position.distanceTo(zoomOutTargetPosition) < 1) {
+ 
+  // Camera zoom out animation
+  if (isZoomingOut) {
+    camera.position.lerp(zoomOutTargetPosition, 0.02);
+   
+    if (camera.position.distanceTo(zoomOutTargetPosition) < 5) {
       isZoomingOut = false;
+    }
   }
-}
-
-  controls.update();
-  requestAnimationFrame(animate);
+ 
+  // Render
   composer.render();
 }
-loadAsteroids('/asteroids/asteroidPack.glb', 1000, 130, 160);
-loadAsteroids('/asteroids/asteroidPack.glb', 3000, 352, 370);
+
+
+// ******  EVENT LISTENERS  ******
+// Update the mouse event listener to include layer clicks
+function onDocumentMouseDownUpdated(event) {
+  // First check for layer clicks
+  checkLayerClick(event);
+ 
+  // Then proceed with existing planet selection logic
+  onDocumentMouseDown(event);
+}
+
+
+// Replace the existing event listener
+document.removeEventListener('mousedown', onDocumentMouseDown, false);
+document.addEventListener('mousedown', onDocumentMouseDownUpdated, false);
+
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
+
+
+// ******  START ANIMATION  ******
 animate();
 
-window.addEventListener('mousemove', onMouseMove, false);
-window.addEventListener('mousedown', onDocumentMouseDown, false);
-window.addEventListener('resize', function(){
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth,window.innerHeight);
-  composer.setSize(window.innerWidth,window.innerHeight);
-});
+

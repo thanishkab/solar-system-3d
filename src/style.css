@@ -1,3 +1,4 @@
+
 .planet-info {
     display: none;
     position: fixed;
@@ -37,4 +38,97 @@ h2 {
 p {
     color: white; 
     line-height: 1.5; 
+}
+#splitButton {
+  background: darkorange;
+  border: none;
+  padding: 8px 12px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+#splitButton:hover {
+  background: orangered;
+}
+
+.hotspot {
+  width: 10px;
+  height: 10px;
+  background: yellow;
+  border-radius: 50%;
+  position: absolute;
+  cursor: pointer;
+}
+/* Add these styles to your existing style.css */
+
+#splitButton {
+  background: linear-gradient(45deg, #ff6b35, #f7931e);
+  border: none;
+  padding: 12px 20px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+}
+
+#splitButton:hover {
+  background: linear-gradient(45deg, #ff5722, #ff9800);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.6);
+}
+
+#splitButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(255, 107, 53, 0.4);
+}
+
+#splitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#coreDetails {
+  margin-top: 15px;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  animation: slideIn 0.3s ease-out;
+}
+
+#coreDetails h3 {
+  font-size: 16px;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+#coreDetails p {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Enhanced planet info styling */
+.planet-info-content {
+  background: linear-gradient(135deg, rgba(0, 0, 35, 0.95), rgba(0, 0, 50, 0.95));
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0px 0px 30px 5px rgba(255,255,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.1);
 }
